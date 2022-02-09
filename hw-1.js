@@ -56,12 +56,12 @@ function move(fileID, folderID) {
   // Get file data
   let fileData = getFileData(fileID);
   // Check if file exists
-  if (!fileData) return console.log('File not found!');
+  if (!fileData) return console.log(`File(id:${fileID}) not found!`);
 
   // Get target folder index
   let targetFolderIndex = folders.findIndex(folder => folder.id === folderID);
   // Check if target folder exists
-  if (targetFolderIndex < 0) return console.log('Folder not found!');
+  if (targetFolderIndex < 0) return console.log(`Folder(id:${folderID}) not found!`);
 
   // Check if files array exists in target folder
   if (!folders[targetFolderIndex].files) folders[targetFolderIndex].files = [];
@@ -69,6 +69,7 @@ function move(fileID, folderID) {
   folders[targetFolderIndex].files.push(fileData.file);
   // Remove file from source folder
   folders[fileData.folderIndex].files.splice(fileData.fileIndex, 1);
+  console.log(`File(id:${fileID}) moved to folder(id:${folderID})`);
 }
 
 // Copy folder to target folder
@@ -76,12 +77,12 @@ function copy(fileID, folderID) {
   // Get file data
   let fileData = getFileData(fileID);
   // Check if file exists
-  if (!fileData) return console.log('File not found!');
+  if (!fileData) return console.log(`File(id:${fileID}) not found!`);
 
   // Get target folder index
   let targetFolderIndex = folders.findIndex(folder => folder.id === folderID);
   // Return if target folder does not exist
-  if (targetFolderIndex < 0) return console.log('Folder not found!');
+  if (targetFolderIndex < 0) return console.log(`Folder(id:${folderID}) not found!`);
 
   // Give new id to file and update id counter
   fileData.file.id = id.current + 1;
@@ -90,6 +91,7 @@ function copy(fileID, folderID) {
   if (!folders[targetFolderIndex].files) folders[targetFolderIndex].files = [];
   // Add file to target folder
   folders[targetFolderIndex].files.push(fileData.file);
+  console.log(`File(id:${fileID}) copied to folder(id:${folderID}) as file(id:${id.current})`);
 }
 
 // Remove file
@@ -97,10 +99,11 @@ function remove(fileID) {
   // Get file data
   let fileData = getFileData(fileID);
   // Check if file exists
-  if (!fileData) return console.log('File not found!');
+  if (!fileData) return console.log(`File(id:${fileID}) not found!`);
 
   // Remove file
   folders[fileData.folderIndex].files.splice(fileData.fileIndex, 1);
+  console.log(`File(id:${fileID}) removed from folder(id:${fileData.folderID})`);
 }
 
 // Remove folder and all files inside
@@ -108,10 +111,11 @@ function removeFolder(folderID) {
   // Get target folder index
   let targetFolderIndex = folders.findIndex(folder => folder.id === folderID);
   // Check if target folder exists
-  if (targetFolderIndex < 0) return console.log('Folder not found!');
+  if (targetFolderIndex < 0) return console.log(`Folder(id:${folderID}) not found!`);
 
   // Remove folder
   folders.splice(targetFolderIndex, 1);
+  console.log(`Folder(id:${folderID}) removed`);
 }
 
 // Find parent folder of file
@@ -119,7 +123,8 @@ function parentFolderOf(fileID) {
   // Get file data
   let fileData = getFileData(fileID);
   // Check if file exists
-  if (!fileData) return console.log('File not found!');
+  if (!fileData) return console.log(`File(id:${fileID}) not found!`);
 
+  console.log(`Parent of file(id:${fileID}) is folder(id:${fileData.folderID})`);
   return fileData.folderID;
 }
