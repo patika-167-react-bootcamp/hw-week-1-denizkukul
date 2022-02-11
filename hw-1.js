@@ -21,198 +21,209 @@ const folders = [
   },
 ]
 
+// Get positions of given items inside folders array
+// Takes any number of objects as arguments --> findWithID({fileID:22},{folderID:5},{fileID:13})
+function findWithID() {
+  // Create object to save results
+  const results = {}
+
+  // Build targets object with given arguments
+  const targets = { files: [], folders: [] }
+  Array.from(arguments).forEach(item => {
+    item.fileID && targets.files.push(item.fileID);
+    item.folderID && targets.folders.push(item.folderID);
+  });
+
+  // Iterate trough folders array
+  // Returns false if all targets are not found
+  let itemsFound = folders.some((folder, folderIndex) => {
+
+    // If all target files are not found, iterate files array inside current folder
+    if (targets.files.length && folder.files) {
+      folder.files.some((file, fileIndex) => {
+        // Compare id of current fileID with targetFileIDs
+        if (targets.files.includes(file.id)) {
+          // If a targetFileID is found, save it to results object
+          results[file.id] = {
+            fileContent: { ...file }, // Take a duplicate of file object
+            fileIndex: fileIndex,
+            parentFolderID: folder.id,
+            parentFolderIndex: folderIndex
+          }
+          // Remove targetFileID from target files array
+          targets.files = targets.files.filter(target => target !== file.id);
+          // If all target files are found, stop iterating files array
+          if (!targets.files.length) return true;
+          // Else, keep iterating files array
+          return false;
+        }
+      })
+    }
+
+    // If all target folders are not found, compare current folderID with targetFolderIDs
+    if (targets.folders.length && targets.folders.includes(folder.id)) {
+      // If a targetFolderID is found save it to results object
+      results[folder.id] = {};
+      results[folder.id].folderIndex = folderIndex;
+      // Remove targetFolderID from target folders array
+      targets.folders = targets.folders.filter(target => target !== folder.id);
+    }
+
+    // If all targets are found, stop iterating
+    if (!targets.files.length && !targets.folders.length) return true;
+    // Keep iterating folders array
+    return false
+  })
+
+  // If some targets are not found log errors and return false;
+  if (!itemsFound) {
+    targets.files.forEach(fileID => {
+      console.log(`File(id:${fileID}) not found!`);
+    })
+    targets.folders.forEach(folderID => {
+      console.log(`Folder(id:${folderID}) not found!`);
+    })
+    return false;
+  }
+
+  // If all targets are found, return results object --> { 22:{...}, 5:{...}, ...}
+  return results;
+}
+
+// Confirm input type is number to prevent unnecessary iterations
+// Takes any number of objects as arguments --> validateInput({type:"File", id:22},{type:"Folder", id:5})
+function validateInput() {
+  // If any arguments are invalid return false and log error
+  return Array.from(arguments).every(item => {
+    if (typeof item.id !== "number") {
+      console.log(`${item.type} id must be a number!`);
+      return false;
+    }
+    else return true;
+  })
+}
+
+// Add file or folder to given index
+function addItem(item, folderIndex = null) {
+  let targetArray;
+  // If called with second argument, set target to given folderIndex.files array (item will be a file object) 
+  if (folderIndex !== null) {
+    // Create files array if it does not exist
+    if (!folders[folderIndex].files) folders[folderIndex].files = [];
+    targetArray = folders[folderIndex].files;
+  }
+  // If called with single argument, set target to folders array (item will be a folder object)
+  else targetArray = folders;
+  // Add item to target array
+  targetArray.push(item);
+}
+
+// Remove file or folder
+function removeItem(itemIndex, folderIndex = null) {
+  let targetArray;
+  // If called with second argument, set target to given folderIndex.files array (itemIndex will be index of a file object) 
+  if (folderIndex !== null) {
+    targetArray = folders[folderIndex].files;
+  }
+  // If called with single argument, set target to folders array (itemIndex will be index of a folder object)
+  else targetArray = folders;
+  // Remove item from target array
+  targetArray.splice(itemIndex, 1);
+}
+
 // Move file to target folder
 function move(fileID, targetFolderID) {
   // Validate ids
-  if (typeof fileID !== "number") return console.log('File id must be a number!');
-  if (typeof targetFolderID !== "number") return console.log('Folder id must be a number!')
+  if (!validateInput({ type: "File", id: fileID }, { type: "Folder", id: targetFolderID })) return;
 
-  // Create object to store iteration results
-  const results = { file: null, fileIndex: null, sourceFolderID: null, sourceFolderIndex: null, targetFolderIndex: null };
+  // Find positions of file and target folder
+  let results = findWithID({ fileID: fileID }, { folderID: targetFolderID })
 
-  // Iterate trough folders array
-  folders.some((folder, folderIndex) => {
-    // Check for targetFolderID
-    if (folder.id === targetFolderID) {
-      // If target folder is found save index to results object
-      results.targetFolderIndex = folderIndex;
-    }
+  // If file or target folder is not found, return
+  if (!results) return;
 
-    // If file is not already found, iterate files array inside current folder
-    if (results.file === null && folder.files) {
-      folder.files.some((file, fileIndex) => {
-        // If file is found, save data to results object
-        if (file.id === fileID) {
-          results.file = { ...file }; // Take a duplicate of file object
-          results.fileIndex = fileIndex;
-          results.sourceFolderID = folder.id;
-          results.sourceFolderIndex = folderIndex;
-          // Stop iterating files array
-          return true;
-        }
-        else return false;
-      })
-    }
+  // If file will be moved to same position, return
+  if (results[fileID].parentFolderID === targetFolderID) return console.log(`File(id:${fileID}) is already in folder(id:${targetFolderID})`)
 
-    // If both file position and target folder position are found, stop iterating folders array
-    if (results.file && results.targetFolderIndex !== null) return true;
-    // Else continue iterating folders array
-    else return false
-  })
+  // Move file
+  addItem(results[fileID].fileContent, results[targetFolderID].folderIndex);
+  removeItem(results[fileID].fileIndex, results[fileID].parentFolderIndex);
 
-  // If file or targetFolder is not found return log
-  if (results.file === null) return console.log(`File(id:${fileID}) not found!`);
-  if (results.targetFolderIndex === null) return console.log(`Folder(id:${targetFolderID}) not found!`);
-  if (results.sourceFolderID === targetFolderID) return console.log(`File(id:${fileID}) is already in folder(id:${targetFolderID})`)
-
-  // Create files array if it does not exist
-  if (!folders[results.targetFolderIndex].files) folders[results.targetFolderIndex].files = [];
-  // Add file to files array in target folder
-  folders[results.targetFolderIndex].files.push(results.file);
-  // Remove file from source folder
-  folders[results.sourceFolderIndex].files.splice(results.fileIndex, 1);
   console.log(`File(id:${fileID}) moved to folder(id:${targetFolderID})`);
 }
 
-// Copy folder to target folder
+// Copy file to target folder
 function copy(fileID, targetFolderID) {
   // Validate ids
-  if (typeof fileID !== "number") return console.log('File id must be a number!');
-  if (typeof targetFolderID !== "number") return console.log('Folder id must be a number!')
+  if (!validateInput({ type: "File", id: fileID }, { type: "Folder", id: targetFolderID })) return;
 
-  // Create object to store iteration results
-  const results = { file: null, fileIndex: null, sourceFolderID: null, sourceFolderIndex: null, targetFolderIndex: null };
+  // Find positions of file and target folder
+  let results = findWithID({ fileID: fileID }, { folderID: targetFolderID })
 
-  // Iterate trough folders array
-  folders.some((folder, folderIndex) => {
-    // Check for targetFolderID
-    if (folder.id === targetFolderID) {
-      // If target folder is found save index to results object
-      results.targetFolderIndex = folderIndex;
-    }
+  // If file or target folder is not found, return
+  if (!results) return;
 
-    // If file is not already found, iterate files array inside current folder
-    if (results.file === null && folder.files) {
-      folder.files.some((file, fileIndex) => {
-        // If file is found, save data to results object
-        if (file.id === fileID) {
-          results.file = { ...file }; // Take a duplicate of file object
-          results.fileIndex = fileIndex;
-          results.sourceFolderID = folder.id;
-          results.sourceFolderIndex = folderIndex;
-          // Stop iterating files array
-          return true;
-        }
-        else return false;
-      })
-    }
-
-    // If both file position and target folder position are found, stop iterating folders array
-    if (results.file && results.targetFolderIndex !== null) return true;
-    // Else continue iterating folders array
-    else return false
-  })
-
-  // If file or targetFolder is not found return log
-  if (results.file === null) return console.log(`File(id:${fileID}) not found!`);
-  if (results.targetFolderIndex === null) return console.log(`Folder(id:${targetFolderID}) not found!`);
-
+  // Copy file
   // Give new id to file and update id counter
-  results.file.id = id.current + 1;
+  results[fileID].fileContent.id = id.current + 1;
   id.current++;
-  // Create files array if it does not exist
-  if (!folders[results.targetFolderIndex].files) folders[results.targetFolderIndex].files = [];
-  // Add file to files array in target folder
-  folders[results.targetFolderIndex].files.push(results.file);
+
+  addItem(results[fileID].fileContent, results[targetFolderID].folderIndex);
   console.log(`File(id:${fileID}) copied to folder(id:${targetFolderID}) as file(id:${id.current})`);
 }
 
 // Remove file
 function remove(fileID) {
   // Validate id
-  if (typeof fileID !== "number") return console.log('File id must be a number!');
+  if (!validateInput({ type: "File", id: fileID })) return;
 
-  // Create object to store iteration results
-  const results = { fileIndex: null, parentFolderID: null, parentFolderIndex: null };
+  // Find position of file
+  let results = findWithID({ fileID: fileID });
 
-  // Iterate trough folders array
-  folders.some((folder, folderIndex) => {
-    // Iterate trough files array
-    return folder.files.some((file, fileIndex) => {
-      // If file is found, save data to results object
-      if (file.id === fileID) {
-        results.fileIndex = fileIndex;
-        results.parentFolderID = folder.id;
-        results.parentFolderIndex = folderIndex;
-        // Stop iterating
-        return true;
-      }
-      else return false;
-    })
-  })
-
-  // If file is not found return log
-  if (results.fileIndex === null) return console.log(`File(id:${fileID}) not found!`);
+  // If file is not found, return
+  if (!results) return;
 
   // Remove file
-  folders[results.parentFolderIndex].files.splice(results.fileIndex, 1);
-  console.log(`File(id:${fileID}) removed from folder(id:${results.parentFolderID})`);
+  removeItem(results[fileID].fileIndex, results[fileID].parentFolderIndex);
+
+  console.log(`File(id:${fileID}) removed from folder(id:${results[fileID].parentFolderID})`);
 }
 
 // Remove folder and all files inside
 function removeFolder(folderID) {
   // Validate id
-  if (typeof folderID !== "number") return console.log('Folder id must be a number!');
-  let folderIndex = null;
+  if (!validateInput({ type: "Folder", id: folderID })) return;
 
-  // Iterate trough folders array
-  folders.some((folder, index) => {
-    if (folder.id === folderID) {
-      folderIndex = index
-      // Stop iterating
-      return true
-    }
-    // Continue iterating
-    else return false;
-  })
+  // Find position of folder
+  let results = findWithID({ folderID: folderID });
 
-  // If folder is not found return log
-  if (folderIndex === null) return console.log(`Folder(id:${folderID}) not found!`);
+  // If folder is not found, return
+  if (!results) return;
 
   // Remove folder
-  folders.splice(folderIndex, 1);
+  removeItem(results[folderID].folderIndex);
+
   console.log(`Folder(id:${folderID}) removed`);
 }
 
 // Find parent folder of file
 function parentFolderOf(fileID) {
   // Validate id
-  if (typeof fileID !== "number") return console.log('File id must be a number!');
+  if (!validateInput({ type: "File", id: fileID })) return;
 
-  let parentFolderID = null;
+  // Find position of file
+  let results = findWithID({ fileID: fileID });
 
-  // Iterate trough folders array
-  folders.some((folder) => {
-    // Iterate trough files array
-    return folder.files && folder.files.some((file) => {
-      // If file is found, save data to results object
-      if (file.id === fileID) {
-        parentFolderID = folder.id;
-        // Stop iterating
-        return true;
-      }
-      else return false;
-    })
-  })
+  // If file is not found, return
+  if (!results) return;
 
-  // If file is not found return log
-  if (parentFolderID === null) return console.log(`File(id:${fileID}) not found!`);
-  console.log(`Parent of file(id:${fileID}) is folder(id:${parentFolderID})`);
-  return parentFolderID;
+  // Return parent folder
+  console.log(`Parent of file(id:${fileID}) is folder(id:${results[fileID].parentFolderID})`);
+  return results[fileID].parentFolderID;
 }
 
 // Managing IDs
-// Check every id used and get largest number
+// Runs once to check every id used and get the largest number
 const id = { current: 0 };
 folders.forEach(folder => {
   if (folder.id > id.current) id.current = folder.id;
